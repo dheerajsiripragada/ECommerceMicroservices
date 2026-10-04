@@ -93,6 +93,20 @@ services:
     networks:
       - ecommerce-network
 
+  frontend:
+    build:
+      context: ../react-projects/EcommerceFrontend
+      dockerfile: Containerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:8000"
+    container_name: ecommerce-frontend
+    depends_on:
+      - api-gateway
+    ports:
+      - "5173:80"
+    networks:
+      - ecommerce-network
+
 volumes:
   ecommerce-sql-data:
 
