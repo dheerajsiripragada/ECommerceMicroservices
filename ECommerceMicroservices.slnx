@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ECommerce.ApiGateway/ECommerce.ApiGateway.csproj" Id="a7cb889c-7313-4f47-b1c4-583b1844a712" />
+  <Project Path="ECommerce.OrderService/ECommerce.OrderService.csproj" Id="3dfc92ef-8b18-4dab-927f-38d4f9c1e27e" />
+  <Project Path="ECommerce.ProductService/ECommerce.ProductService.csproj" Id="58c690a6-0f02-4422-a9fa-385ac5266847" />
+  <Project Path="ECommerce.UserService/ECommerce.UserService.csproj" />
+</Solution>

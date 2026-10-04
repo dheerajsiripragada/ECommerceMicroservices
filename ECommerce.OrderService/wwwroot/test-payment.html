@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Razorpay Payment Test</title>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+
+    <h1>Razorpay Payment Test</h1>
+
+    <label>
+        JWT Token:
+        <br>
+        <textarea id="token"
+                  rows="6"
+                  cols="80"
+                  placeholder="Paste your JWT token here">
+        </textarea>
+    </label>
+
+    <br><br>
+
+    <label>
+        Order ID:
+        <input id="orderId"
+               type="number"
+               value="1">
+    </label>
+
+    <br><br>
+
+    <button onclick="startPayment()">
+        Pay for Order
+    </button>
+
+    <p id="message"></p>
+
+    <script>
+
+async function startPayment() {
+
+    const token =
+        document.getElementById('token').value.trim();
+
+    const orderId =
+        document.getElementById('orderId').value;
+
+    const message =
+        document.getElementById('message');
+
+    if (!token) {
+        message.textContent =
+            'Please enter your JWT token.';
+        return;
+    }
+
+    try {
+
+        message.textContent =
+            'Creating payment...';
+
+        const paymentResponse = await fetch(
+            '/api/Payment',
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    orderId: Number(orderId)
+                })
+            }
+        );
+
+        if (!paymentResponse.ok) {
+
+            const error =
+                await paymentResponse.text();
+
+            throw new Error(error);
+        }
+
+        const payment =
+            await paymentResponse.json();
+
+        message.textContent =
+            'Opening Razorpay Checkout...';
+
+        const options = {
+
+            key: "rzp_test_TXQR7g2VcY3rBD",
+
+            amount:
+                Math.round(payment.amount * 100),
+
+            currency: 'INR',
+
+            name: 'Ecommerce',
+
+            description:
+                `Payment for Order #${payment.orderId}`,
+
+            order_id:
+                payment.razorpayOrderId,
+
+            handler: async function (response) {
+
+                try {
+
+                    message.textContent =
+                        'Verifying payment...';
+
+                    const verifyResponse =
+                        await fetch(
+                            '/api/Payment/verify',
+                            {
+                                method: 'POST',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json',
+
+                                    'Authorization':
+                                        `Bearer ${token}`
+                                },
+
+                                body: JSON.stringify({
+
+                                    razorpayOrderId:
+                                        response.razorpay_order_id,
+
+                                    razorpayPaymentId:
+                                        response.razorpay_payment_id,
+
+                                    razorpaySignature:
+                                        response.razorpay_signature
+
+                                })
+                            }
+                        );
+
+                    const result =
+                        await verifyResponse.text();
+
+                    if (!verifyResponse.ok) {
+                        throw new Error(result);
+                    }
+
+                    message.textContent =
+                        result;
+
+                }
+                catch (error) {
+
+                    message.textContent =
+                        `Verification failed: ${error.message}`;
+
+                }
+
+            },
+
+            modal: {
+                ondismiss: function () {
+
+                    message.textContent =
+                        'Payment window closed.';
+
+                }
+            }
+
+        };
+
+        const razorpay =
+            new Razorpay(options);
+
+        razorpay.open();
+
+    }
+    catch (error) {
+
+        message.textContent =
+            `Payment failed: ${error.message}`;
+
+    }
+}
+
+    </script>
+
+</body>
+</html>

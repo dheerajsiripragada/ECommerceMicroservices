@@ -1,0 +1,101 @@
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: ecommerce-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ecommerce-sql-data:/var/opt/mssql
+    networks:
+      - ecommerce-network
+
+  user-service:
+    build:
+      context: ./ECommerce.UserService
+      dockerfile: Containerfile
+    container_name: ecommerce-user-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__UserDatabase: "Server=sqlserver,1433;Database=ECommerceUserDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;"
+      JwtSettings__Key: "${JWT_KEY}"
+      JwtSettings__Issuer: "Ecommerce.Api"
+      JwtSettings__Audience: "Ecommerce.Client"
+      JwtSettings__ExpiryMinutes: "60"
+    depends_on:
+      - sqlserver
+    networks:
+      - ecommerce-network
+
+  product-service:
+    build:
+      context: ./ECommerce.ProductService
+      dockerfile: Containerfile
+    container_name: ecommerce-product-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ProductDatabase: "Server=sqlserver,1433;Database=ECommerceProductDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;"
+      JwtSettings__Key: "${JWT_KEY}"
+      JwtSettings__Issuer: "Ecommerce.Api"
+      JwtSettings__Audience: "Ecommerce.Client"
+      JwtSettings__ExpiryMinutes: "60"
+    depends_on:
+      - sqlserver
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build:
+      context: ./ECommerce.OrderService
+      dockerfile: Containerfile
+    container_name: ecommerce-order-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__OrderDatabase: "Server=sqlserver,1433;Database=ECommerceOrderDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;"
+      ServiceUrls__ProductService: "http://product-service:8080/"
+      JwtSettings__Key: "${JWT_KEY}"
+      JwtSettings__Issuer: "Ecommerce.Api"
+      JwtSettings__Audience: "Ecommerce.Client"
+      JwtSettings__ExpiryMinutes: "60"
+      RazorpaySettings__KeyId: "${RAZORPAY_KEY_ID}"
+      RazorpaySettings__KeySecret: "${RAZORPAY_KEY_SECRET}"
+    depends_on:
+      - sqlserver
+      - product-service
+    networks:
+      - ecommerce-network
+
+  api-gateway:
+    build:
+      context: ./ECommerce.ApiGateway
+      dockerfile: Containerfile
+    container_name: ecommerce-api-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      JwtSettings__Key: "${JWT_KEY}"
+      JwtSettings__Issuer: "Ecommerce.Api"
+      JwtSettings__Audience: "Ecommerce.Client"
+      JwtSettings__ExpiryMinutes: "60"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    ports:
+      - "8000:8080"
+    networks:
+      - ecommerce-network
+
+volumes:
+  ecommerce-sql-data:
+
+networks:
+  ecommerce-network:
+    driver: bridge
